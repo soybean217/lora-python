@@ -62,9 +62,11 @@ class Location:
 
     @staticmethod
     def assert_isinstanceof(value):
-        assert isinstance(value, Location), '%r is not a valid Location' % value
+        assert isinstance(
+            value, Location), '%r is not a valid Location' % value
 
     class objects:
+
         @staticmethod
         def str_to_obj(string):
             string = string.split(',')
@@ -75,17 +77,21 @@ class Location:
 
 
 class GatewayStatus:
+
     def __init__(self, mac_addr, lati, long, alti):
         self.mac_addr = mac_addr
         self.location = Location(lng=long, lat=lati, alt=alti)
 
     def save(self):
-        db0.hset(ConstDB0.gateway + hexlify(self.mac_addr).decode(), FieldGateway.location, str(self.location))
-        db4.publish(Channel4.gis_gateway_location + hexlify(self.mac_addr).decode(), str(self.location))
+        db0.hset(ConstDB0.gateway + hexlify(self.mac_addr).decode(),
+                 FieldGateway.location, str(self.location))
+        db4.publish(Channel4.gis_gateway_location +
+                    hexlify(self.mac_addr).decode(), str(self.location))
 
 
 class Gateway:
-    fields = (FieldGateway.user_id, FieldGateway.freq_plan, FieldGateway.public, FieldGateway.disable)
+    fields = (FieldGateway.user_id, FieldGateway.freq_plan,
+              FieldGateway.public, FieldGateway.disable)
     __assert_switcher = {FieldGateway.mac_addr: Assertions.a_eui,
                          FieldGateway.user_id: Assertions.a_not_negative_int,
                          FieldGateway.public: Assertions.a_bool,
@@ -119,13 +125,17 @@ class Gateway:
         last = int(last) if last else 0
         db3.set(ConstDB3.T_GATEWAY + hex_mac_addr, now)
         if now - last > Const.CONNECTION_TIMEOUT:
-            db3.rpush(ConstDB3.P_GATEWAY + hexlify(self.mac_addr).decode(), last, now)
+            db3.rpush(ConstDB3.P_GATEWAY +
+                      hexlify(self.mac_addr).decode(), last, now)
 
     def pop_restart(self):
-        restart = db0.hget(ConstDB0.gateway + hexlify(self.mac_addr).decode(), 'restart')
+        restart = db0.hget(ConstDB0.gateway +
+                           hexlify(self.mac_addr).decode(), 'restart')
         if restart == b'1':
-            db0.hdel(ConstDB0.gateway + hexlify(self.mac_addr).decode(), 'restart')
-            Logger.info(action=Action.object, type=IDType.gateway, id=hexlify(self.mac_addr).decode(), msg='Restart')
+            db0.hdel(ConstDB0.gateway +
+                     hexlify(self.mac_addr).decode(), 'restart')
+            Logger.info(action=Action.object, type=IDType.gateway,
+                        id=hexlify(self.mac_addr).decode(), msg='Restart')
             return True
         else:
             return False
@@ -143,16 +153,19 @@ class Gateway:
         :return:
         """
         time_now = datetime.now()
-        key = ConstDB0.statistics_freq + hexlify(self.mac_addr).decode() + ':' + time_now.strftime("%Y-%m-%d") + ':' + str(time_now.hour)
+        key = ConstDB0.statistics_freq + hexlify(self.mac_addr).decode(
+        ) + ':' + time_now.strftime("%Y-%m-%d") + ':' + str(time_now.hour)
         pipe = db0.pipeline()
         pipe.hincrby(key, freq_plan)
         pipe.expire(key, 30 * 86400)
         pipe.execute()
 
     class objects:
+
         @staticmethod
         def get(mac_addr):
-            info = db0.hmget(ConstDB0.gateway + hexlify(mac_addr).decode(), Gateway.fields)
+            info = db0.hmget(ConstDB0.gateway +
+                             hexlify(mac_addr).decode(), Gateway.fields)
             try:
                 user_id = int(info[0])
                 freq_plan = FrequencyPlan(info[1].decode())
@@ -160,7 +173,8 @@ class Gateway:
                 disable = bool(int(info[3]))
                 return Gateway(mac_addr, user_id, freq_plan, public, disable)
             except Exception as error:
-                Logger.error(action=Action.object, type=IDType.gateway, id=hexlify(mac_addr).decode(), msg='Get Gateway ERROR: %s' % error)
+                Logger.error(action=Action.object, type=IDType.gateway, id=hexlify(
+                    mac_addr).decode(), msg='Get Gateway ERROR: %s' % error)
                 return None
 
         @classmethod
@@ -169,7 +183,8 @@ class Gateway:
             :param dev_eui: bytes
             :return:
             """
-            key_list = db0.zrevrange(ConstDB0.dev_gateways + hexlify(dev_eui).decode(), 0, -1)
+            key_list = db0.zrevrange(
+                ConstDB0.dev_gateways + hexlify(dev_eui).decode(), 0, -1)
             gateway_list = []
             for mac_addr in key_list:
                 gateway_list.append(cls.get(mac_addr))
@@ -177,7 +192,8 @@ class Gateway:
 
         @staticmethod
         def best_mac_addr(dev_eui):
-            key_list = db0.zrevrange(ConstDB0.dev_gateways + hexlify(dev_eui).decode(), 0, 0)
+            key_list = db0.zrevrange(
+                ConstDB0.dev_gateways + hexlify(dev_eui).decode(), 0, 0)
             if len(key_list) > 0:
                 return key_list[0]
             else:
@@ -185,6 +201,7 @@ class Gateway:
 
 
 class PullInfo:
+
     def __init__(self, mac_addr, ip_addr, prot_ver):
         """
         :param mac_addr: bytes
@@ -197,16 +214,19 @@ class PullInfo:
         self.prot_ver = prot_ver
 
     class objects:
+
         @classmethod
         def get_pull_info(cls, mac_addr):
             key = ConstDB0.gateway_pull + hexlify(mac_addr).decode()
             info = db0.hgetall(key)
             try:
-                ip_addr = PullInfo.ip_addr_str_to_tuple(info[b'ip_addr'].decode())
+                ip_addr = PullInfo.ip_addr_str_to_tuple(
+                    info[b'ip_addr'].decode())
                 prot_ver = int(info[b'prot_ver'])
                 return PullInfo(mac_addr, ip_addr, prot_ver)
             except Exception as error:
-                Logger.error(action=Action.object, type=IDType.pull_info, id=key, msg=str(error))
+                Logger.error(action=Action.object,
+                             type=IDType.pull_info, id=key, msg=str(error))
 
     def save(self):
         ip_addr = self.ip_addr_tuple_to_str(self.ip_addr)
@@ -215,8 +235,12 @@ class PullInfo:
 
     @staticmethod
     def ip_addr_tuple_to_str(tuple_addr):
+        if tuple_addr[0][0:7] == '::ffff:':
+            tuple_addr = list(tuple_addr)
+            tuple_addr[0] = tuple_addr[0][7:]
+            tuple_addr = tuple(tuple_addr)
         if isinstance(tuple_addr, tuple):
-            return '%s:%s' % tuple_addr
+            return '%s:%s' % (tuple_addr[0], tuple_addr[1])
         else:
             raise TypeError('Except tuple but got %s' % tuple_addr)
 
