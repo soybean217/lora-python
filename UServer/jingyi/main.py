@@ -118,10 +118,9 @@ def listen_jingyi_request():
     ps.subscribe("up_alarm:9999939a00000000")
     while True:
         for item in ps.listen():
-            logger.debug('LISTEN MSG ' + str(item))
+            logger.debug('jingyi', 'LISTEN MSG:' + str(item))
             if item['type'] == 'message':
-                data = item['data'].decode()
-                data = json.loads(data)
-                logger.debug(ConstLog.join_req + 'LISTEN MSG ' + str(item))
+                msg = db0.hget(item['data'])
+                logger.debug('jingyi', 'get MSG ' + str(msg))
                 # thr = Greenlet(process_join_request, data)
                 # thr.run()
