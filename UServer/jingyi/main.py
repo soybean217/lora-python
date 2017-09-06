@@ -120,7 +120,8 @@ def listen_jingyi_request():
         for item in ps.listen():
             logger.debug('jingyi', 'LISTEN MSG:' + str(item))
             if item['type'] == 'message':
-                msg = db0.hget(item['data'])
+                logger.debug('data', item['data'])
+                msg = db1.get(item['data'])
                 logger.debug('jingyi', 'get MSG ' + str(msg))
                 # thr = Greenlet(process_join_request, data)
                 # thr.run()
