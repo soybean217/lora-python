@@ -1,4 +1,5 @@
 from database.db2 import db2
+import time
 
 
 def doConnect(host, port):
@@ -27,10 +28,17 @@ def listen_jingyi_request():
                 print(str(dataFrame))
                 print(len(dataFrame))
                 firstByte = int(dataFrame[0])
-                print(firstByte)
+                print("firstByte:", firstByte)
                 frameType = (firstByte & 0b11110000) >> 4
-                print(frameType)
-                # print(str(item['data'].decode()))
-                # print(str(db2.get(item['data'].decode())))
-                # thr = Greenlet(process_join_request, data)
-                # thr.run()
+                print('frame type:', frameType)
+                if (len(dataFrame) == 11 and frameType == 3) or (len(dataFrame) == 9 and frameType == 2) or (len(dataFrame) == 2 and frameType == 4):
+                    positionStatus = (dataFrame[1] & 0b10000000) >> 7
+                    print('positionStatus:', positionStatus)
+                    voltage = (dataFrame[1] & 0b01111111)
+                    print('voltage:', voltage)
+                    if len(dataFrame) > 2:
+                        print(dataFrame[2:4])
+                        # print(str(item['data'].decode()))
+                        # print(str(db2.get(item['data'].decode())))
+                        # thr = Greenlet(process_join_request, data)
+                        # thr.run()
