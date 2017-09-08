@@ -8,6 +8,7 @@ from frequency_plan import FrequencyPlan
 from datetime import datetime
 from utils.log import Logger, Action, IDType
 from const import Const
+from config import ISIPV6
 
 """
  Name |  Type  | Function
@@ -247,5 +248,7 @@ class PullInfo:
     @staticmethod
     def ip_addr_str_to_tuple(str_addr):
         tuple_addr = str_addr.split(':')
+        if ISIPV6:
+            tuple_addr[0] = '::ffff:' + tuple_addr[0]
         tuple_addr[1] = int(tuple_addr[1])
         return tuple(tuple_addr)

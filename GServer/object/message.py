@@ -193,8 +193,6 @@ class MsgUp:
         key = ConstDB2.up_m + dev_eui + ':%s' % self.ts
         pipe.hmset(key, self.obj_to_dict())
         pipe.expire(key, ConstMsg.EXPIRE_STATIS)
-        Logger.debug('fuming', 'trace publish key',
-                     Channel0.up_alarm + app_eui, key)
         pipe.publish(Channel0.up_alarm + app_eui, key)
         pipe.execute()
 
