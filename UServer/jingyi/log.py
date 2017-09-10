@@ -15,7 +15,8 @@ ch = logging.StreamHandler(stream=sys.stdout)
 ch.setLevel(logging.DEBUG)
 
 # 定义handler的输出格式
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s %(filename)s %(funcName)s %(lineno)s - %(message)s')
 # fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 
