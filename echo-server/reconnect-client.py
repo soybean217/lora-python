@@ -29,7 +29,6 @@ header['host_code_machine_id'] = 3
 header['host_code_sale_type'] = b'\x0d'
 header['host_code_sale_year'] = 17
 header['host_code_project_id'] = 1
-header['nowtime'] = 1
 sensorBody = {}
 sensorBody['position_id'] = 1
 sensorBody['sensor_state'] = 1

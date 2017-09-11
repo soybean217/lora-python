@@ -6,7 +6,8 @@ import socket
 from binascii import hexlify
 from gevent import Greenlet
 
-host, port = "testgeo.bolinparking.com", 12366
+# host, port = "testgeo.bolinparking.com", 12366
+host, port = "fsgeo.bolinparking.com", 16801
 # host, port = "127.0.0.1", 12345
 sockLocal = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 header = {}
@@ -66,8 +67,8 @@ def doConnect(host, port):
 
 
 def heartbeat_jingyi():
-    global sockLocal
-    sockLocal = doConnect(host, port)
+    # global sockLocal
+    # sockLocal = doConnect(host, port)
     # send_data(procSensor())
     while True:
         logger.debug("begin send heartbeat")
@@ -78,8 +79,9 @@ def heartbeat_jingyi():
 
 
 def send_data(msg):
-    global sockLocal
+    sockLocal = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
+        sockLocal.connect((host, port))
         sockLocal.send(msg)
         logger.debug("send msg ok : %s", len(msg))
         logger.debug("send msg ok : %s", hexlify(msg).decode())
@@ -90,13 +92,15 @@ def send_data(msg):
     except socket.error:
         logger.error("socket error,do reconnect ... waiting timeout")
         time.sleep(3)
-        sockLocal = doConnect(host, port)
+        sockLocal.connect((host, port))
         sockLocal.send(msg)
         logger.debug("resend msg len: %s", len(msg))
         logger.debug("resend msg: %s", hexlify(msg).decode())
         recv = sockLocal.recv(1024)
         logger.debug("recv data :%s", recv)
         logger.debug("recv data :%s", hexlify(recv).decode())
+    finally:
+        sockLocal.close()
 
 
 def proc_message(item):
@@ -129,7 +133,7 @@ def proc_message(item):
                 if len(dataFrame) > 2:
                     logger.debug('temperature:%d,%d' %
                                  (dataFrame[2], dataFrame[3]))
-            elif firstByte == b'\xab' and len(dataFrame) == 5:
+            elif dataFrame[0] == b'\xab' and len(dataFrame) == 5:
                 logger.debug('tuobao sensor')
                 sensorBody['sensor_state'] = (
                     dataFrame[2] & 0b10000000) >> 7
@@ -146,44 +150,44 @@ def proc_message(item):
 
 
 def get_position(dev_eui):
-    if dev_eui == 'e702000010ffffff':
-        return 96
-    elif dev_eui == '9401000010ffffff':
-        return 137
-    elif dev_eui == '0003000010ffffff':
-        return 136
-    elif dev_eui == '7b03000010ffffff':
-        return 135
-    elif dev_eui == '8503000010ffffff':
-        return 134
-    elif dev_eui == 'a503000010ffffff':
-        return 133
-    elif dev_eui == '5602000010ffffff':
-        return 132
-    elif dev_eui == '7603000010ffffff':
-        return 131
-    elif dev_eui == '5803000010ffffff':
-        return 130
-    elif dev_eui == 'b702000010ffffff':
-        return 129
-    elif dev_eui == '1703000010ffffff':
-        return 128
-    elif dev_eui == '4b02000010ffffff':
+    if dev_eui == '9401000010ffffff':
         return 127
-    elif dev_eui == 'd802000010ffffff':
+    elif dev_eui == '0003000010ffffff':
         return 126
-    elif dev_eui == '2702000010ffffff':
+    elif dev_eui == '7b03000010ffffff':
         return 125
+    elif dev_eui == '8503000010ffffff':
+        return 124
+    elif dev_eui == 'a503000010ffffff':
+        return 123
+    elif dev_eui == '5b02000010ffffff':
+        return 122
+    elif dev_eui == '7603000010ffffff':
+        return 121
+    elif dev_eui == '5803000010ffffff':
+        return 120
+    elif dev_eui == 'b702000010ffffff':
+        return 119
+    elif dev_eui == '1703000010ffffff':
+        return 118
+    elif dev_eui == '4b02000010ffffff':
+        return 117
+    elif dev_eui == 'd802000010ffffff':
+        return 116
+    elif dev_eui == '2702000010ffffff':
+        return 115
+    elif dev_eui == '5b03000010ffffff':
+        return 114
     elif dev_eui == '9999939a99999998':
-        return 102
+        return 97
     elif dev_eui == '9999939a9999999b':
-        return 100
-    elif dev_eui == '9999939a9999999c':
-        return 98
-    elif dev_eui == 'e702000010ffffff':
         return 96
-    elif dev_eui == '7202000010ffffff':
+    elif dev_eui == '9999939a9999999c':
+        return 95
+    elif dev_eui == 'e702000010ffffff':
         return 94
+    elif dev_eui == '7202000010ffffff':
+        return 93
     elif dev_eui == 'e302000010ffffff':
         return 92
     elif dev_eui == 'ce03000010ffffff':
