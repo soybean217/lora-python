@@ -21,12 +21,7 @@ header['host_code_sale_type'] = b'\x0d'
 header['host_code_sale_year'] = b'\x17'
 # test project id = 2
 header['host_code_project_id'] = 2
-sensorBody = {}
-sensorBody['position_id'] = 0
-sensorBody['sensor_state'] = 1
-sensorBody['park_count'] = 1
-sensorBody['voltage'] = 1
-sensorBody['reserved_field'] = 0
+reserved_field = 0
 heartbeatBody = {}
 heartbeatBody['alarm'] = 0
 heartbeatBody['voltage'] = 13000
@@ -49,10 +44,10 @@ def procHeartbeat():
     return tmpHeader + tmpBody + crc.to_bytes(2, byteorder='big')
 
 
-def procSensor():
+def procSensor(sensor):
     tmpHeader = b'\x20' + procHeaderer()
-    tmpBody = sensorBody['position_id'].to_bytes(1, byteorder='little') + sensorBody['sensor_state'].to_bytes(
-        4, byteorder='little') + sensorBody['park_count'].to_bytes(2, byteorder='little') + sensorBody['voltage'].to_bytes(1, byteorder='little') + sensorBody['reserved_field'].to_bytes(7, byteorder='little')
+    tmpBody = sensor['position_id'].to_bytes(1, byteorder='little') + sensor['state'].to_bytes(
+        4, byteorder='little') + sensor['park_count'].to_bytes(2, byteorder='little') + sensor['voltage'].to_bytes(1, byteorder='little') + reserved_field.to_bytes(7, byteorder='little')
     crc = crc16(tmpHeader + tmpBody)
     return tmpHeader + tmpBody + crc.to_bytes(2, byteorder='big')
 
@@ -112,20 +107,21 @@ def send_data(msg):
 def proc_position_data(sensor):
     # dev = sensor['dev']
     if sensor['dev'] in dataPositionGlobal.keys():
-        dataPositionGlobal[sensor['dev']]['last_sensor_info'] = dataPositionGlobal[
-            sensor['dev']]['current_sensor_info']
-        dataPositionGlobal[sensor['dev']]['current_sensor_info'] = sensor
-        if dataPositionGlobal[sensor['dev']]['last_state'] == 0 and sensor == 1:
+        if dataPositionGlobal[sensor['dev']]['last_sensor_info']['state'] == 0 and sensor == 1:
             dataPositionGlobal[sensor['dev']]['park_count'] = dataPositionGlobal[
                 sensor['dev']]['park_count'] + 1
             if dataPositionGlobal[sensor['dev']]['park_count'] > 255:
                 dataPositionGlobal[sensor['dev']]['park_count'] = 0
+        dataPositionGlobal[sensor['dev']]['last_sensor_info'] = dataPositionGlobal[
+            sensor['dev']]['current_sensor_info']
+        dataPositionGlobal[sensor['dev']]['current_sensor_info'] = sensor
     else:
         newPosition = {}
         newPosition['last_sensor_info'] = sensor
         newPosition['current_sensor_info'] = sensor
         newPosition['park_count'] = 0
         dataPositionGlobal[sensor['dev']] = newPosition
+    return dataPositionGlobal[sensor['dev']]['park_count']
 
 
 def proc_message(item):
@@ -133,10 +129,11 @@ def proc_message(item):
         logger.debug(str(item['data']))
         sensor = {}
         sensor['dev'] = str(item['data']).split(":")[1]
-        sensorBody['position_id'] = get_position(sensor['dev'])
-        logger.debug('get position with dev:%s', sensorBody['position_id'])
-        if sensorBody['position_id'] > 0:
-            if sensorBody['position_id'] >= 114:
+        sensor['position_id'] = get_position(sensor['dev'])
+        logger.debug('get position with dev:%s', sensor['position_id'])
+        if sensor['position_id'] > 0:
+            sensor['position_id']
+            if sensor['position_id'] >= 114:
                 header['host_code_machine_id'] = 667
             else:
                 header['host_code_machine_id'] = 666
@@ -145,25 +142,23 @@ def proc_message(item):
             logger.debug('len:%s', len(dataFrame))
             logger.debug(str(dataFrame))
             firstByte = int(dataFrame[0])
-            sensor['fcnt'] = item['fcnt']
+            sensor['fcnt'] = dataFromDev[b'fcnt']
             frameType = (firstByte & 0b11110000) >> 4
             logger.debug('if weichuan frame type:%s', frameType)
             if (len(dataFrame) == 11 and frameType == 3) or (len(dataFrame) == 9 and frameType == 2) or (len(dataFrame) == 2 and frameType == 4):
                 sensor['model'] = 'weichuan'
                 logger.debug('weichuan sensor')
                 sensor['state'] = (dataFrame[1] & 0b10000000) >> 7
-                sensorBody['sensor_state'] = (dataFrame[1] & 0b10000000) >> 7
                 logger.debug('positionStatus:%s',
-                             sensorBody['sensor_state'])
+                             sensor['state'])
                 voltage = (dataFrame[1] & 0b01111111)
                 logger.debug('voltage:%s', voltage)
-                sensorBody['voltage'] = voltage - 29
                 sensor['voltage'] = voltage - 29
                 logger.debug("begin send sensor data")
-                proc_position_data(sensor)
-                logger('park_count:%s', dataPositionGlobal[
-                       sensor['dev']]['park_count'])
-                send_data(procSensor())
+                sensor['park_count'] = proc_position_data(sensor)
+                logger.debug('park_count:%s', dataPositionGlobal[
+                    sensor['dev']]['park_count'])
+                send_data(procSensor(sensor))
                 # send_data(procSensor())
                 if len(dataFrame) > 2:
                     logger.debug('temperature:%d,%d' %
@@ -172,18 +167,16 @@ def proc_message(item):
                 sensor['model'] = 'tuobao'
                 logger.debug('tuobao sensor')
                 sensor['state'] = (dataFrame[2] & 0b10000000) >> 7
-                sensorBody['sensor_state'] = (dataFrame[2] & 0b10000000) >> 7
                 logger.debug('positionStatus:%s',
-                             sensorBody['sensor_state'])
+                             sensor['state'])
                 voltage = (dataFrame[2] & 0b01111111)
                 logger.debug('voltage:%s', voltage)
                 logger.debug('status:%s', dataFrame[1] & 0b00001111)
                 sensor['voltage'] = int(voltage * 7 / 100)
-                sensorBody['voltage'] = int(voltage * 7 / 100)
-                proc_position_data(sensor)
-                logger('park_count:%s', dataPositionGlobal[
-                       sensor['dev']]['park_count'])
-                send_data(procSensor())
+                sensor['park_count'] = proc_position_data(sensor)
+                logger.debug('park_count:%s', dataPositionGlobal[
+                    sensor['dev']]['park_count'])
+                send_data(procSensor(sensor))
     except Exception as error:
         error_msg = error
         logger.error(str(error_msg))
@@ -250,7 +243,6 @@ def get_position(dev_eui):
 
 
 def listen_jingyi_request():
-    global sensorBody
     # sockLocal = doConnect(host, port)
     ps = db2.pubsub()
     ps.subscribe("up_alarm:9999939a00000000")
