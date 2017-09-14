@@ -107,18 +107,15 @@ def send_data(msg):
 def proc_position_data(sensor):
     # dev = sensor['dev']
     if sensor['dev'] in dataPositionGlobal.keys():
-        if dataPositionGlobal[sensor['dev']]['last_sensor_info']['state'] == 0 and sensor == 1:
+        if dataPositionGlobal[sensor['dev']]['last_sensor_info']['state'] == 0 and sensor['state'] == 1:
             dataPositionGlobal[sensor['dev']]['park_count'] = dataPositionGlobal[
                 sensor['dev']]['park_count'] + 1
             if dataPositionGlobal[sensor['dev']]['park_count'] > 255:
                 dataPositionGlobal[sensor['dev']]['park_count'] = 0
-        dataPositionGlobal[sensor['dev']]['last_sensor_info'] = dataPositionGlobal[
-            sensor['dev']]['current_sensor_info']
-        dataPositionGlobal[sensor['dev']]['current_sensor_info'] = sensor
+        dataPositionGlobal[sensor['dev']]['last_sensor_info'] = sensor
     else:
         newPosition = {}
         newPosition['last_sensor_info'] = sensor
-        newPosition['current_sensor_info'] = sensor
         newPosition['park_count'] = 0
         dataPositionGlobal[sensor['dev']] = newPosition
     return dataPositionGlobal[sensor['dev']]['park_count']
@@ -138,9 +135,9 @@ def proc_message(item):
             else:
                 header['host_code_machine_id'] = 666
             dataFromDev = db2.hgetall(item['data'])
+            logger.debug(str(dataFromDev))
             dataFrame = dataFromDev[b'data']
             logger.debug('len:%s', len(dataFrame))
-            logger.debug(str(dataFrame))
             firstByte = int(dataFrame[0])
             sensor['fcnt'] = dataFromDev[b'fcnt']
             frameType = (firstByte & 0b11110000) >> 4
@@ -183,7 +180,9 @@ def proc_message(item):
 
 
 def get_position(dev_eui):
-    if dev_eui == '9401000010ffffff':
+    if dev_eui == '2f03000010ffffff':
+        return 128
+    elif dev_eui == '9401000010ffffff':
         return 127
     elif dev_eui == '0003000010ffffff':
         return 126
@@ -239,6 +238,8 @@ def get_position(dev_eui):
         return 78
     elif dev_eui == '3303000010ffffff':
         return 76
+    elif dev_eui == '1c03000010ffffff':
+        return 74
     return 0
 
 
