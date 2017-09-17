@@ -35,6 +35,10 @@ def procHeaderer():
     return header['host_code_machine_id'].to_bytes(4, byteorder='little') + header['host_code_project_id'].to_bytes(4, byteorder='little') + header['host_code_sale_year'] + header['host_code_sale_type'] + int(round(time.time())).to_bytes(8, byteorder='little')
 
 
+def procSensorHeaderer(sensor):
+    return sensor['host_code_machine_id'].to_bytes(4, byteorder='little') + header['host_code_project_id'].to_bytes(4, byteorder='little') + header['host_code_sale_year'] + header['host_code_sale_type'] + int(round(time.time())).to_bytes(8, byteorder='little')
+
+
 def procHeartbeat():
     tmpHeader = b'\x21' + procHeaderer()
     tmpBody = heartbeatBody['alarm'].to_bytes(1, byteorder='little') + heartbeatBody[
@@ -45,7 +49,7 @@ def procHeartbeat():
 
 
 def procSensor(sensor):
-    tmpHeader = b'\x20' + procHeaderer()
+    tmpHeader = b'\x20' + procSensorHeaderer(sensor)
     tmpBody = sensor['position_id'].to_bytes(1, byteorder='little') + sensor['state'].to_bytes(
         4, byteorder='little') + sensor['park_count'].to_bytes(2, byteorder='little') + sensor['voltage'].to_bytes(1, byteorder='little') + reserved_field.to_bytes(7, byteorder='little')
     crc = crc16(tmpHeader + tmpBody)
@@ -77,6 +81,26 @@ def heartbeat_jingyi():
         thr.run()
         # send_data(procHeartbeat())
         time.sleep(300)
+
+
+def loop_sensor_jingyi():
+    # global sockLocal
+    # sockLocal = doConnect(host, port)
+    # send_data(procSensor())
+    while True:
+        time.sleep(1)
+        ctime = time.time()
+        try:
+            for dev in dataPositionGlobal.keys():
+                if dataPositionGlobal[dev]['need_send'] == True and ctime - dataPositionGlobal[dev]['last_receive_time'] > 20:
+                    logger.debug("begin send sensor:%s,dev:%s",
+                                 dev, dataPositionGlobal[dev]['last_sensor_info']['position_id'])
+                    send_data(procSensor(dataPositionGlobal[
+                              dev]['last_sensor_info']))
+                    dataPositionGlobal[dev]['need_send'] = False
+        except Exception as error:
+            error_msg = error
+            logger.error(str(error_msg))
 
 
 def send_data(msg):
@@ -112,11 +136,16 @@ def proc_position_data(sensor):
                 sensor['dev']]['park_count'] + 1
             if dataPositionGlobal[sensor['dev']]['park_count'] > 255:
                 dataPositionGlobal[sensor['dev']]['park_count'] = 0
+        if dataPositionGlobal[sensor['dev']]['last_sensor_info']['state'] != sensor['state']:
+            dataPositionGlobal[sensor['dev']]['need_send'] = True
+        dataPositionGlobal[sensor['dev']]['last_receive_time'] = time.time()
         dataPositionGlobal[sensor['dev']]['last_sensor_info'] = sensor
     else:
         newPosition = {}
         newPosition['last_sensor_info'] = sensor
         newPosition['park_count'] = 0
+        newPosition['last_receive_time'] = time.time()
+        newPosition['need_send'] = True
         dataPositionGlobal[sensor['dev']] = newPosition
     return dataPositionGlobal[sensor['dev']]['park_count']
 
@@ -130,10 +159,10 @@ def proc_message(item):
         logger.debug('get position with dev:%s', sensor['position_id'])
         if sensor['position_id'] > 0:
             sensor['position_id']
-            if sensor['position_id'] >= 114:
-                header['host_code_machine_id'] = 667
+            if sensor['position_id'] >= 101:
+                sensor['host_code_machine_id'] = 667
             else:
-                header['host_code_machine_id'] = 666
+                sensor['host_code_machine_id'] = 666
             dataFromDev = db2.hgetall(item['data'])
             logger.debug(str(dataFromDev))
             dataFrame = dataFromDev[b'data']
@@ -155,7 +184,7 @@ def proc_message(item):
                 sensor['park_count'] = proc_position_data(sensor)
                 logger.debug('park_count:%s', dataPositionGlobal[
                     sensor['dev']]['park_count'])
-                send_data(procSensor(sensor))
+                # send_data(procSensor(sensor))
                 # send_data(procSensor())
                 if len(dataFrame) > 2:
                     logger.debug('temperature:%d,%d' %
@@ -173,7 +202,7 @@ def proc_message(item):
                 sensor['park_count'] = proc_position_data(sensor)
                 logger.debug('park_count:%s', dataPositionGlobal[
                     sensor['dev']]['park_count'])
-                send_data(procSensor(sensor))
+                # send_data(procSensor(sensor))
     except Exception as error:
         error_msg = error
         logger.error(str(error_msg))
@@ -210,6 +239,38 @@ def get_position(dev_eui):
         return 115
     elif dev_eui == '5b03000010ffffff':
         return 114
+    elif dev_eui == 'ef01000010ffffff':
+        return 113
+    elif dev_eui == '0703000010ffffff':
+        return 112
+    elif dev_eui == '8602000010ffffff':
+        return 111
+    elif dev_eui == '1d03000010ffffff':
+        return 110
+    elif dev_eui == 'f302000010ffffff':
+        return 109
+    elif dev_eui == '2902000010ffffff':
+        return 108
+    elif dev_eui == '4803000010ffffff':
+        return 107
+    elif dev_eui == '1702000010ffffff':
+        return 106
+    elif dev_eui == '1e02000010ffffff':
+        return 105
+    elif dev_eui == '0902000010ffffff':
+        return 104
+    elif dev_eui == 'ae02000010ffffff':
+        return 103
+    elif dev_eui == 'f002000010ffffff':
+        return 102
+    elif dev_eui == '8603000010ffffff':
+        return 101
+    elif dev_eui == '2f02000010ffffff':
+        return 100
+    elif dev_eui == 'dc02000010ffffff':
+        return 99
+    elif dev_eui == 'fb02000010ffffff':
+        return 98
     elif dev_eui == '9999939a99999998':
         return 97
     elif dev_eui == '9999939a9999999b':
