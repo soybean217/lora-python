@@ -92,24 +92,44 @@ def loop_sensor_jingyi():
         ctime = time.time()
         try:
             for dev in dataPositionGlobal.keys():
-                if dataPositionGlobal[dev]['need_send'] == True and ctime - dataPositionGlobal[dev]['last_receive_time'] > 20:
+                if dataPositionGlobal[dev]['need_send'] == True and ctime - dataPositionGlobal[dev]['last_receive_time'] > 18:
                     logger.debug("begin send sensor:%s,dev:%s",
                                  dev, dataPositionGlobal[dev]['last_sensor_info']['position_id'])
-                    send_data(procSensor(dataPositionGlobal[
-                              dev]['last_sensor_info']))
+                    if dataPositionGlobal[dev]['last_send_state'] == 1 and dataPositionGlobal[dev]['last_sensor_info']['state'] == 1:
+                        sensor = dataPositionGlobal[
+                            dev]['last_sensor_info'].copy()
+                        sensor['state'] = 0
+                        thr = Greenlet(send_data, procSensor(sensor))
+                        thr.run()
+                        thr1 = Greenlet(send_data_delay, procSensor(dataPositionGlobal[
+                            dev]['last_sensor_info']))
+                        thr1.run()
+                    else:
+                        thr = Greenlet(send_data, procSensor(dataPositionGlobal[
+                            dev]['last_sensor_info']))
+                        thr.run()
+                        # send_data(procSensor(dataPositionGlobal[
+                        #     dev]['last_sensor_info']))
+                    dataPositionGlobal[dev]['last_send_state'] = dataPositionGlobal[
+                        dev]['last_sensor_info']['state']
                     dataPositionGlobal[dev]['need_send'] = False
         except Exception as error:
             error_msg = error
             logger.error(str(error_msg))
 
 
+def send_data_delay(msg):
+    time.sleep(15)
+    send_data(msg)
+
+
 def send_data(msg):
     sockLocal = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sockLocal.connect((host, port))
+        logger.debug("begin send msg length: %s", len(msg))
         sockLocal.send(msg)
-        logger.debug("send msg ok : %s", len(msg))
-        logger.debug("send msg ok : %s", hexlify(msg).decode())
+        logger.debug("send msg : %s", hexlify(msg).decode())
         recv = sockLocal.recv(1024)
         logger.debug("recv data :%s", recv)
         logger.debug("recv data :%s", hexlify(recv).decode())
@@ -146,6 +166,7 @@ def proc_position_data(sensor):
         newPosition['park_count'] = 0
         newPosition['last_receive_time'] = time.time()
         newPosition['need_send'] = True
+        newPosition['last_send_state'] = 0
         dataPositionGlobal[sensor['dev']] = newPosition
     return dataPositionGlobal[sensor['dev']]['park_count']
 
@@ -180,7 +201,6 @@ def proc_message(item):
                 voltage = (dataFrame[1] & 0b01111111)
                 logger.debug('voltage:%s', voltage)
                 sensor['voltage'] = voltage - 29
-                logger.debug("begin send sensor data")
                 sensor['park_count'] = proc_position_data(sensor)
                 logger.debug('park_count:%s', dataPositionGlobal[
                     sensor['dev']]['park_count'])
@@ -253,7 +273,7 @@ def get_position(dev_eui):
         return 108
     elif dev_eui == '4803000010ffffff':
         return 107
-    elif dev_eui == '1702000010ffffff':
+    elif dev_eui == 'a402000010ffffff':
         return 106
     elif dev_eui == '1e02000010ffffff':
         return 105
