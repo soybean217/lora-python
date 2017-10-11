@@ -231,15 +231,15 @@ def proc_message(item):
 def get_position(dev_eui):
     if dev_eui == '2f03000010ffffff':
         return 128
-    elif dev_eui == '9401000010ffffff':
+    elif dev_eui == '9c02000010ffffff':
         return 127
     elif dev_eui == '0003000010ffffff':
         return 126
-    elif dev_eui == '7b03000010ffffff':
+    elif dev_eui == 'bd03000010ffffff':
         return 125
-    elif dev_eui == '8503000010ffffff':
+    elif dev_eui == 'a903000010ffffff':
         return 124
-    elif dev_eui == '1b02000010ffffff':
+    elif dev_eui == 'd002000010ffffff':
         return 123
     elif dev_eui == '5b02000010ffffff':
         return 122
@@ -247,13 +247,13 @@ def get_position(dev_eui):
         return 121
     elif dev_eui == '5803000010ffffff':
         return 120
-    elif dev_eui == 'b702000010ffffff':
+    elif dev_eui == 'b203000010ffffff':
         return 119
-    elif dev_eui == '1703000010ffffff':
+    elif dev_eui == '6103000010ffffff':
         return 118
-    elif dev_eui == '4b02000010ffffff':
+    elif dev_eui == '2e03000010ffffff':
         return 117
-    elif dev_eui == 'd802000010ffffff':
+    elif dev_eui == '1003000010ffffff':
         return 116
     elif dev_eui == '2702000010ffffff':
         return 115
