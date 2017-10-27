@@ -3,8 +3,13 @@ import time
 from .log import logger
 import crcmod
 import socket
+import tornado
+import requests
+import json
+from tornado import gen
 from binascii import hexlify
 from gevent import Greenlet
+from tornado.httpclient import AsyncHTTPClient
 
 # host, port = "testgeo.bolinparking.com", 12366
 host, port = "fsgeo.bolinparking.com", 16801
@@ -172,170 +177,122 @@ def proc_position_data(sensor):
 
 
 def proc_message(item):
-    try:
-        logger.debug(str(item['data']))
-        sensor = {}
-        sensor['dev'] = str(item['data']).split(":")[1]
-        sensor['position_id'] = get_position(sensor['dev'])
-        logger.debug('get position with dev:%s', sensor['position_id'])
-        if sensor['position_id'] > 0:
-            sensor['position_id']
-            if sensor['position_id'] >= 101:
-                sensor['host_code_machine_id'] = 667
-            else:
-                sensor['host_code_machine_id'] = 666
-            dataFromDev = db2.hgetall(item['data'])
-            logger.debug(str(dataFromDev))
-            dataFrame = dataFromDev[b'data']
-            logger.debug('len:%s', len(dataFrame))
-            firstByte = int(dataFrame[0])
-            sensor['fcnt'] = dataFromDev[b'fcnt']
-            frameType = (firstByte & 0b11110000) >> 4
-            logger.debug('if weichuan frame type:%s', frameType)
-            if (len(dataFrame) == 11 and frameType == 3) or (len(dataFrame) == 9 and frameType == 2) or (len(dataFrame) == 2 and frameType == 4):
-                sensor['model'] = 'weichuan'
-                logger.debug('weichuan sensor')
-                sensor['state'] = (dataFrame[1] & 0b10000000) >> 7
-                logger.debug('positionStatus:%s',
-                             sensor['state'])
-                voltage = (dataFrame[1] & 0b01111111)
-                logger.debug('voltage:%s', voltage)
-                sensor['voltage'] = voltage - 29
-                sensor['park_count'] = proc_position_data(sensor)
-                logger.debug('park_count:%s', dataPositionGlobal[
-                    sensor['dev']]['park_count'])
-                # send_data(procSensor(sensor))
-                # send_data(procSensor())
-                if len(dataFrame) > 2:
-                    logger.debug('temperature:%d,%d' %
-                                 (dataFrame[2], dataFrame[3]))
-            elif firstByte == 171 and len(dataFrame) == 5:
-                sensor['model'] = 'tuobao'
-                logger.debug('tuobao sensor')
-                sensor['state'] = (dataFrame[2] & 0b10000000) >> 7
-                logger.debug('positionStatus:%s',
-                             sensor['state'])
-                voltage = (dataFrame[2] & 0b01111111)
-                logger.debug('voltage:%s', voltage)
-                logger.debug('status:%s', dataFrame[1] & 0b00001111)
-                sensor['voltage'] = int(voltage * 7 / 100)
-                sensor['park_count'] = proc_position_data(sensor)
-                logger.debug('park_count:%s', dataPositionGlobal[
-                    sensor['dev']]['park_count'])
-                # send_data(procSensor(sensor))
-    except Exception as error:
-        error_msg = error
-        logger.error(str(error_msg))
+    # try:
+    logger.debug(str(item['data']))
+    sensor = {}
+    sensor['timestamp'] = int(time.time())
+    sensor['dev'] = str(item['data']).split(":")[1]
+    logger.debug(sensor['dev'])
+    dataFromDev = db2.hgetall(item['data'])
+    logger.debug(dataFromDev)
+    sensor['dataFrame'] = str(dataFromDev[b'data'])
+    logger.debug(sensor['dataFrame'])
+    payload = json.dumps(sensor)
+    logger.debug(payload)
+    response = requests.post("http://120.24.220.180:38670/test/",
+                             data=payload, timeout=3)
+    # http_client = AsyncHTTPClient()
+    # request = tornado.httpclient.HTTPRequest(
+    #     "http://120.24.220.180:20310/nodeDev/", method='POST', body=payload, headers=headers, request_timeout=10, connect_timeout=3)
+    # request = tornado.httpclient.HTTPRequest(
+    #     "http://www.agsew.com/nodeDev/", method='POST', body=payload,  request_timeout=10, connect_timeout=3)
+    # logger.debug('begin test 02')
+    # response = yield http_client.fetch(request)
+    logger.debug(response)
+    logger.debug(response.content)
+
+    # sensor['position_id'] = get_position(sensor['dev'])
+    # logger.debug('get position with dev:%s', sensor['position_id'])
+    # if sensor['position_id'] > 0:
+    #     sensor['position_id']
+    #     if sensor['position_id'] >= 101:
+    #         sensor['host_code_machine_id'] = 667
+    #     else:
+    #         sensor['host_code_machine_id'] = 666
+    #     dataFromDev = db2.hgetall(item['data'])
+    #     logger.debug(str(dataFromDev))
+
+    #     logger.debug('len:%s', len(dataFrame))
+    #     firstByte = int(dataFrame[0])
+    #     sensor['fcnt'] = dataFromDev[b'fcnt']
+    #     frameType = (firstByte & 0b11110000) >> 4
+    #     logger.debug('if weichuan frame type:%s', frameType)
+    #     if (len(dataFrame) == 11 and frameType == 3) or (len(dataFrame) == 9 and frameType == 2) or (len(dataFrame) == 2 and frameType == 4):
+    #         sensor['model'] = 'weichuan'
+    #         logger.debug('weichuan sensor')
+    #         sensor['state'] = (dataFrame[1] & 0b10000000) >> 7
+    #         logger.debug('positionStatus:%s',
+    #                      sensor['state'])
+    #         voltage = (dataFrame[1] & 0b01111111)
+    #         logger.debug('voltage:%s', voltage)
+    #         sensor['voltage'] = voltage - 29
+    #         sensor['park_count'] = proc_position_data(sensor)
+    #         logger.debug('park_count:%s', dataPositionGlobal[
+    #             sensor['dev']]['park_count'])
+    #         # send_data(procSensor(sensor))
+    #         # send_data(procSensor())
+    #         if len(dataFrame) > 2:
+    #             logger.debug('temperature:%d,%d' %
+    #                          (dataFrame[2], dataFrame[3]))
+    #     elif firstByte == 171 and len(dataFrame) == 5:
+    #         sensor['model'] = 'tuobao'
+    #         logger.debug('tuobao sensor')
+    #         sensor['state'] = (dataFrame[2] & 0b10000000) >> 7
+    #         logger.debug('positionStatus:%s',
+    #                      sensor['state'])
+    #         voltage = (dataFrame[2] & 0b01111111)
+    #         logger.debug('voltage:%s', voltage)
+    #         logger.debug('status:%s', dataFrame[1] & 0b00001111)
+    #         sensor['voltage'] = int(voltage * 7 / 100)
+    #         sensor['park_count'] = proc_position_data(sensor)
+    #         logger.debug('park_count:%s', dataPositionGlobal[
+    #             sensor['dev']]['park_count'])
+    #         # send_data(procSensor(sensor))
+    # except Exception as error:
+    #     error_msg = error
+    #     logger.error(str(error_msg))
 
 
-def get_position(dev_eui):
-    if dev_eui == 'ff00750100000539':
-        return 128
-    elif dev_eui == 'ff00750100000545':
-        return 127
-    elif dev_eui == 'ff00750100000556':
-        return 126
-    elif dev_eui == 'ff00750100000552':
-        return 125
-    elif dev_eui == 'a903000010ffffff':
-        return 124
-    elif dev_eui == 'd002000010ffffff':
-        return 123
-    elif dev_eui == 'ff00750100000555':
-        return 122
-    elif dev_eui == 'ff00750100000547':
-        return 121
-    elif dev_eui == '5803000010ffffff':
-        return 120
-    elif dev_eui == 'b203000010ffffff':
-        return 119
-    elif dev_eui == '6103000010ffffff':
-        return 118
-    elif dev_eui == '2e03000010ffffff':
-        return 117
-    elif dev_eui == '1003000010ffffff':
-        return 116
-    elif dev_eui == '2702000010ffffff':
-        return 115
-    elif dev_eui == '5b03000010ffffff':
-        return 114
-    elif dev_eui == 'ff00750100000544':
-        return 113
-    elif dev_eui == '0703000010ffffff':
-        return 112
-    elif dev_eui == '8602000010ffffff':
-        return 111
-    elif dev_eui == '1d03000010ffffff':
-        return 110
-    elif dev_eui == 'ff00750100000549':
-        return 109
-    elif dev_eui == '2902000010ffffff':
-        return 108
-    elif dev_eui == '4803000010ffffff':
-        return 107
-    elif dev_eui == 'a402000010ffffff':
-        return 106
-    elif dev_eui == '1e02000010ffffff':
-        return 105
-    elif dev_eui == '0902000010ffffff':
-        return 104
-    elif dev_eui == 'ae02000010ffffff':
-        return 103
-    elif dev_eui == 'f002000010ffffff':
-        return 102
-    elif dev_eui == '8603000010ffffff':
-        return 101
-    elif dev_eui == '2f02000010ffffff':
-        return 100
-    elif dev_eui == 'ff00750100000554':
-        return 99
-    elif dev_eui == 'ff00750100000551':
-        return 98
-    elif dev_eui == '9999939a99999998':
-        return 97
-    elif dev_eui == '9999939a9999999b':
-        return 96
-    elif dev_eui == '9999939a9999999c':
-        return 95
-    elif dev_eui == 'ff00750100000542':
-        return 94
-    elif dev_eui == '7202000010ffffff':
-        return 93
-    elif dev_eui == 'ff00750100000550':
-        return 92
-    elif dev_eui == 'ff00750100000538':
-        return 90
-    elif dev_eui == 'ff00750100000540':
-        return 88
-    elif dev_eui == 'a403000010ffffff':
-        return 86
-    elif dev_eui == '8d02000010ffffff':
-        return 84
-    elif dev_eui == 'ff00750100000541':
-        return 82
-    elif dev_eui == '7c03000010ffffff':
-        return 80
-    elif dev_eui == '5603000010ffffff':
-        return 78
-    elif dev_eui == '8502000010ffffff':
-        return 76
-    elif dev_eui == 'ff00750100000543':
-        return 74
-    return 0
+@gen.coroutine
+def test_post():
+    logger.debug('begin test')
+    http_client = AsyncHTTPClient()
+    logger.debug('begin test 01')
+    # request = tornado.httpclient.HTTPRequest(
+    #     "http://192.168.207.1:48765/test/", method='POST', body='payload', request_timeout=10, connect_timeout=3)
+    # logger.debug('begin test 02')
+    # response = yield http_client.fetch(request)
+    # logger.debug('begin test 03')
+    # logger.debug(response.body)
+    sensor = {}
+    sensor['dev'] = '1000000000000008'
+    logger.debug(sensor['dev'])
+    sensor['dataFrame'] = '1023'
+    logger.debug(sensor['dataFrame'])
+    # payload = '"' + json.dumps(sensor) + '"'
+    payload = json.dumps(sensor)
+    logger.debug(payload)
+    # response = requests.post("http://192.168.207.1:48765/test/", data=payload)
+    response = requests.post("http://120.24.220.180:38670/test/",
+                             data=payload, timeout=3)
+    logger.debug(response)
+    logger.debug(response.content)
 
 
-def listen_jingyi_request():
+def listen_ammeter_request():
     # sockLocal = doConnect(host, port)
     ps = db2.pubsub()
-    ps.subscribe("up_alarm:9999939a00000000")
+    ps.subscribe("up_alarm:0000000000000001")
     # ps.subscribe("up_alarm:1020304050607080")
     while True:
         for item in ps.listen():
-            try:
-                logger.debug(str(item))
-                if item['type'] == 'message':
-                    thr = Greenlet(proc_message, item)
-                    thr.run()
-            except Exception as error:
-                error_msg = error
-                logger.error(str(error_msg))
+            # try:
+            logger.debug(str(item))
+            if item['type'] == 'message':
+                logger.debug('prepare enter message')
+                proc_message(item)
+                # thr = Greenlet(proc_message, item)
+                # thr.run()
+            # except Exception as error:
+            #     error_msg = error
+            #     logger.error(str(error_msg))
