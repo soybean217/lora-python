@@ -273,7 +273,7 @@ def get_position(dev_eui):
         return 108
     elif dev_eui == '4803000010ffffff':
         return 107
-    elif dev_eui == 'a402000010ffffff':
+    elif dev_eui == 'cd0a000010ffffff':
         return 106
     elif dev_eui == '1e02000010ffffff':
         return 105
