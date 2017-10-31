@@ -239,7 +239,7 @@ def get_position(dev_eui):
         return 125
     elif dev_eui == 'a903000010ffffff':
         return 124
-    elif dev_eui == 'd002000010ffffff':
+    elif dev_eui == 'ff00750100000557':
         return 123
     elif dev_eui == 'ff00750100000555':
         return 122
@@ -247,7 +247,7 @@ def get_position(dev_eui):
         return 121
     elif dev_eui == 'ff00750100000546':
         return 120
-    elif dev_eui == 'b203000010ffffff':
+    elif dev_eui == 'ff00750100000553':
         return 119
     elif dev_eui == 'f908000010ffffff':
         return 118
