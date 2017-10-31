@@ -5,6 +5,10 @@ import crcmod
 import socket
 from binascii import hexlify
 from gevent import Greenlet
+from sqlalchemy import create_engine
+from config import SQLALCHEMY_DATABASE_URI
+
+engine = create_engine(SQLALCHEMY_DATABASE_URI)
 
 # host, port = "testgeo.bolinparking.com", 12366
 host, port = "fsgeo.bolinparking.com", 16801
@@ -27,6 +31,7 @@ heartbeatBody['alarm'] = 0
 heartbeatBody['voltage'] = 13000
 heartbeatBody['reserved'] = 0
 dataPositionGlobal = {}
+devCache = {}
 
 crc16 = crcmod.mkCrcFun(0x18005, rev=True, initCrc=0xFFFF, xorOut=0x0000)
 
@@ -71,6 +76,13 @@ def heartbeat_jingyi():
     # sockLocal = doConnect(host, port)
     # send_data(procSensor())
     while True:
+        global devCache
+        result = engine.execute("select * from sensor_geomagnetism")
+        tmpCache = {}
+        for row in result:
+            key = str(row['dev_eui']).replace("-", "").lower()
+            tmpCache[key] = row
+        devCache = tmpCache
         logger.debug("begin send heartbeat")
         header['host_code_machine_id'] = 667
         thr = Greenlet(send_data, procHeartbeat())
@@ -132,7 +144,10 @@ def send_data(msg):
         logger.debug("send msg : %s", hexlify(msg).decode())
         recv = sockLocal.recv(1024)
         logger.debug("recv data :%s", recv)
-        logger.debug("recv data :%s", hexlify(recv).decode())
+        if int(recv[5]) == 112:
+            logger.debug("recv data :%s", hexlify(recv).decode())
+        else:
+            logger.error("recv data :%s", hexlify(recv).decode())
         logger.debug("recv data len :%s", len(recv))
     except socket.error:
         logger.error("socket error,do reconnect ... waiting timeout")
@@ -176,7 +191,7 @@ def proc_message(item):
         logger.debug(str(item['data']))
         sensor = {}
         sensor['dev'] = str(item['data']).split(":")[1]
-        sensor['position_id'] = get_position(sensor['dev'])
+        sensor['position_id'] = get_positionFromCache(sensor['dev'])
         logger.debug('get position with dev:%s', sensor['position_id'])
         if sensor['position_id'] > 0:
             sensor['position_id']
@@ -226,6 +241,15 @@ def proc_message(item):
     except Exception as error:
         error_msg = error
         logger.error(str(error_msg))
+
+
+def get_positionFromCache(dev_eui):
+    global devCache
+    if devCache.__contains__(dev_eui):
+        return int(devCache[dev_eui]['position_id'])
+    else:
+        logger.error('dev is not exist in cache:%s', dev_eui)
+        return 0
 
 
 def get_position(dev_eui):
