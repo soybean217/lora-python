@@ -11,6 +11,7 @@ if __name__ == '__main__':
     # gevent.joinall([
     #     gevent.spawn(heartbeat_jingyi),
     #     gevent.spawn(listen_jingyi_request),
+    #     gevent.spawn(loop_sensor_jingyi),
     # ])
     threads = []
     threads.append(threading.Thread(target=heartbeat_jingyi))
