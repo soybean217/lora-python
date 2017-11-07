@@ -16,6 +16,8 @@ from .log import logger, ConstLog
 from config import HOST
 import time
 import calendar
+from sqlalchemy import create_engine
+from config import SQLALCHEMY_DATABASE_URI
 
 """
 {'request_msg': '00a0000000000000a0a000000000000000bbe5c1b77f00',
@@ -31,6 +33,8 @@ import calendar
 
 url = 'http://' + HOST + ':6100/join?net_id=22&token=eXU7UoKsfBZ5dTtSgqx8Fg'
 headers = {'content-type': 'application/json'}
+engine = create_engine(SQLALCHEMY_DATABASE_URI)
+appCache = {}
 
 
 # class ListenJoinReqThreading(threading.Thread):
@@ -39,9 +43,11 @@ headers = {'content-type': 'application/json'}
 
 
 def process_join_request(data):
+    global appCache
     error_msg = None
     try:
         app_eui = unhexlify(data['app_eui'])
+        app_eui_str = data['app_eui']
         dev_eui = unhexlify(data['dev_eui'])
         device = db_session.query(Device).get(dev_eui)
         if device is None:
@@ -50,7 +56,8 @@ def process_join_request(data):
             return
         elif device.app_eui != app_eui:
             error_msg = 'DEV:%s is already registered in other application'
-            logger.error(ConstLog.join_req + 'DEV:%s belong to APP:%s, not APP:%s' % (hexlify(dev_eui).decode(), hexlify(device.app_eui).decode(),hexlify(app_eui).decode()))
+            logger.error(ConstLog.join_req + 'DEV:%s belong to APP:%s, not APP:%s' % (hexlify(
+                dev_eui).decode(), hexlify(device.app_eui).decode(), hexlify(app_eui).decode()))
             return
         addr = AddrManger.dis_dev_addr()
         try:
@@ -65,18 +72,27 @@ def process_join_request(data):
         r = requests.post(url, data=json.dumps(data), headers=headers)
         try:
             data = r.json()
-            logger.info(ConstLog.join_resp + 'GET MSG FROM JOIN SERVER %s' % data)
+            logger.info(ConstLog.join_resp +
+                        'GET MSG FROM JOIN SERVER %s' % data)
             if r.ok:
                 accept_msg = data.get('accept_msg')
                 if accept_msg is not None:
-                    device.active(addr=join_dev.addr, nwkskey=b64decode(data['nwkskey']), appskey=b64decode(data['appskey']))
+                    if app_eui_str in appCache.keys():
+                        device.active(addr=join_dev.addr, dev_class='C', nwkskey=b64decode(
+                            data['nwkskey']), appskey=b64decode(data['appskey']))
+                    else:
+                        device.active(addr=join_dev.addr, nwkskey=b64decode(
+                            data['nwkskey']), appskey=b64decode(data['appskey']))
                     device.active_at = datetime.utcnow()
                     device.active_mode = ActiveMode.otaa
                     db_session.commit()
-                    db1.publish(Channel1.join_accept_alarm + hexlify(join_dev.dev_eui).decode(), accept_msg)
+                    db1.publish(Channel1.join_accept_alarm +
+                                hexlify(join_dev.dev_eui).decode(), accept_msg)
                     device.publish()
-                    logger.info('[OTAA] device %s join success' % hexlify(device.dev_eui).decode())
-                    logger.info(ConstLog.publish + Channel1.join_accept_alarm + hexlify(join_dev.dev_eui).decode() + ': %s' % accept_msg)
+                    logger.info('[OTAA] device %s join success' %
+                                hexlify(device.dev_eui).decode())
+                    logger.info(ConstLog.publish + Channel1.join_accept_alarm +
+                                hexlify(join_dev.dev_eui).decode() + ': %s' % accept_msg)
             else:
                 error_msg = data.get('error')
                 if error_msg is not None:
@@ -87,11 +103,13 @@ def process_join_request(data):
             logger.error(ConstLog.join_resp + str(error_msg))
     except Exception as error:
         error_msg = error
-        logger.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!' + str(error_msg))
+        logger.error(
+            '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!' + str(error_msg))
     finally:
         db_session.close()
         if error_msg:
-            db0.publish(Channel1.join_error_alarm + hexlify(app_eui).decode(), message=json.dumps({'dev_eui': hexlify(dev_eui).decode(), 'error': str(error_msg), 'ts': time.time()}))
+            db0.publish(Channel1.join_error_alarm + hexlify(app_eui).decode(), message=json.dumps(
+                {'dev_eui': hexlify(dev_eui).decode(), 'error': str(error_msg), 'ts': time.time()}))
 
 
 def listen_join_request():
@@ -107,3 +125,16 @@ def listen_join_request():
                 thr.run()
 
 
+def fresh_cache():
+    # global sockLocal
+    # sockLocal = doConnect(host, port)
+    # send_data(procSensor())
+    while True:
+        global appCache
+        result = engine.execute("select * from app_default_class")
+        tmpCache = {}
+        for row in result:
+            key = str(row['app_eui']).replace("-", "").lower()
+            tmpCache[key] = row
+        appCache = tmpCache
+        time.sleep(6)
