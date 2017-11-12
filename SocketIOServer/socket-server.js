@@ -9,6 +9,11 @@ var redis = require('redis');
 var mysql = require('mysql');
 const crypto = require('crypto');
 const assert = require('assert');
+var log4js = require('log4js');
+
+var logger = log4js.getLogger();
+logger.level = 'debug';
+// logger.setLevel(log4js.levels.DEBUG);
 
 const CLASS_C = 'C';
 const CLASS_B = 'B';
@@ -31,8 +36,21 @@ var redis_db = redis.createClient({
     'db': 10,
     'return_buffers': true
 });
+// var redis_db = require('redis-connection-pool')('myRedisPool', {
+//     host: '127.0.0.1', // default 
+//     port: 6379, //default 
+//     // optionally specify full redis url, overrides host + port properties 
+//     // url: "redis://username:password@host:port" 
+//     max_clients: 30, // defalut 
+//     perform_checks: false, // checks for needed push/pop functionality 
+//     database: 10, // database number to use 
+//     options: {
+//         auth_pass: 'niotloraredis'
+//     } //options for createClient of node-redis, optional 
+// });
 
-var sql_conn = mysql.createConnection({
+// var sql_conn = mysql.createConnection({
+var sql_conn = mysql.createPool({
     host: 'localhost',
     port: 3306,
     socketPath: '/opt/data/mysql/mysql.sock',
@@ -41,12 +59,12 @@ var sql_conn = mysql.createConnection({
     database: 'nwkserver'
 });
 
-sql_conn.connect();
+// sql_conn.connect();
 
 io.on('connection', function(client) {
     var app_eui = client.handshake.query.app_eui;
     var token = client.handshake.query.token;
-    console.log('connecting: ', app_eui, token);
+    logger.debug('connecting: ', app_eui, token);
     var app_eui_buffer = eui_validator(app_eui);
     if (app_eui_buffer == null) {
         client.error('app_eui is required in query, expect a 16 hex string');
@@ -168,10 +186,11 @@ function listen(client, app_eui) {
     sub.subscribe(CHANNEL_JOIN_ACCEPT + hex_app_eui);
 
     client.on('error', function(err) {
-        console.log('error', err);
+        logger.debug('error', err);
     });
 
     client.on('cache_query', function(data) {
+        logger.debug(data)
         if (data && data.filter) {
             var filter = data.filter;
         }
@@ -261,6 +280,7 @@ function listen(client, app_eui) {
 
 
     client.on('tx', function(data) {
+        logger.debug(data)
         var errors = {};
         var eui_buffer = eui_validator(data.eui);
         if (eui_buffer == null) {
@@ -331,7 +351,7 @@ function listen(client, app_eui) {
     });
 
     client.on('disconnect', function() {
-        console.log('disconnect', client.id, app_eui);
+        logger.debug('disconnect', client.id, app_eui);
         sub.unsubscribe();
     });
 
@@ -534,5 +554,5 @@ function que_down_group_gen_msg(cipher, port, payload) {
 
 
 http.listen(8300, function() {
-    console.log('listening on *:8300')
+    logger.debug('listening on *:8300')
 });
