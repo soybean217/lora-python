@@ -190,7 +190,7 @@ function listen(client, app_eui) {
     });
 
     client.on('cache_query', function(data) {
-        logger.debug(data)
+        logger.debug('cache_query', data)
         if (data && data.filter) {
             var filter = data.filter;
         }
@@ -280,7 +280,7 @@ function listen(client, app_eui) {
 
 
     client.on('tx', function(data) {
-        logger.debug(data)
+        logger.debug('tx', data)
         var errors = {};
         var eui_buffer = eui_validator(data.eui);
         if (eui_buffer == null) {

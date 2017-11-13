@@ -117,13 +117,14 @@ wss.on('connection', function connection(ws) {
 
 		function closeDev() {
 			if ('id' in socket) {
-				socket.emit('cache_query', {
+				socket.emit('tx', {
 					cipher: false,
 					rx_window: '2',
 					port: 12,
 					data: '8001',
 					type: 'unicast',
-					eui: rev.dev
+					eui: rev.dev,
+					confirmed: true
 				});
 				if (rev.dev in devDataCache) {
 					devDataCache[rev.dev]['lastAct'] = 'close'
@@ -146,13 +147,14 @@ wss.on('connection', function connection(ws) {
 
 		function openDev() {
 			if ('id' in socket) {
-				socket.emit('cache_query', {
+				socket.emit('tx', {
 					cipher: false,
 					rx_window: '2',
 					port: 12,
 					data: '8000',
 					type: 'unicast',
-					eui: rev.dev
+					eui: rev.dev,
+					confirmed: true
 				});
 				if (rev.dev in devDataCache) {
 					devDataCache[rev.dev]['lastAct'] = 'open'
