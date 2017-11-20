@@ -76,22 +76,26 @@ def heartbeat_jingyi():
     # sockLocal = doConnect(host, port)
     # send_data(procSensor())
     while True:
-        global devCache
-        result = engine.execute("select * from sensor_geomagnetism")
-        tmpCache = {}
-        for row in result:
-            key = str(row['dev_eui']).replace("-", "").lower()
-            tmpCache[key] = row
-        devCache = tmpCache
-        logger.debug("begin send heartbeat")
-        header['host_code_machine_id'] = 667
-        thr = Greenlet(send_data, procHeartbeat())
-        thr.run()
-        time.sleep(3)
-        header['host_code_machine_id'] = 666
-        thr = Greenlet(send_data, procHeartbeat())
-        thr.run()
-        # send_data(procHeartbeat())
+        try:
+            global devCache
+            result = engine.execute("select * from sensor_geomagnetism")
+            tmpCache = {}
+            for row in result:
+                key = str(row['dev_eui']).replace("-", "").lower()
+                tmpCache[key] = row
+            devCache = tmpCache
+            logger.debug("begin send heartbeat")
+            header['host_code_machine_id'] = 667
+            thr = Greenlet(send_data, procHeartbeat())
+            thr.run()
+            time.sleep(3)
+            header['host_code_machine_id'] = 666
+            thr = Greenlet(send_data, procHeartbeat())
+            thr.run()
+            # send_data(procHeartbeat())
+        except Exception as error:
+            error_msg = error
+            logger.error(str(error_msg))
         time.sleep(300)
 
 
