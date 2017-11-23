@@ -13,7 +13,8 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.DEBUG)
 
 # 定义handler的输出格式
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter(
+    '%(asctime)s - %(levelname)s - %(filename)s %(funcName)s %(lineno)s - %(message)s')
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
 
@@ -27,12 +28,14 @@ def handle_exception(exc_type, exc_value, exc_traceback):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
         return
 
-    logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+    logger.error("Uncaught exception", exc_info=(
+        exc_type, exc_value, exc_traceback))
 
 sys.excepthook = handle_exception
 
 
 class Logger:
+
     @staticmethod
     def info(action='', type='', id='', msg=''):
         logger.info('%s - %s - %s - %s' % (action, type, id, msg))

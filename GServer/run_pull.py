@@ -111,25 +111,34 @@ class ReSender(Greenlet):
 
     def _run(self):
         self.ps.subscribe(CHANNEL_TX_ACK)
-        for i in range(0, 3):
-            start = time.time()
-            while time.time() - start < 0.1:
-                sleep(0.05)
-                for item in self.ps.listen():
-                    Logger.debug(action=Action.resend, type=IDType.ip_addr,
-                                 id=self.pull_info.ip_addr, msg='Get Publish TX, %s' % item)
-                    # item = self.ps.get_message(timeout=0.05)
-                    if item is not None and item['data'] == self.token:
-                        Logger.info(action=Action.resend, type=IDType.ip_addr,
-                                    id=self.pull_info.ip_addr, msg='Get Publish TX, %s' % item)
-                        # return
-                        continue
-            self.server.sendto(self.packet, self.pull_info.ip_addr)
-            Logger.info(action=Action.resend, type=IDType.ip_addr,
-                        id=self.pull_info.ip_addr, msg='Resend data %s : %s' % (i, self.packet))
-        Logger.error(action=Action.resend, type=IDType.gateway, id=self.pull_info.ip_addr,
-                     msg='No TX_ACK got, PULL_RESP may not received by gateway')
-        self.ps.unsubscribe()
+        try:
+            for i in range(0, 3):
+                start = time.time()
+                while time.time() - start < 0.1:
+                    sleep(0.05)
+                    for item in self.ps.listen():
+                        # item = self.ps.get_message(timeout=0.05)
+                        Logger.debug(action=Action.resend, type=IDType.ip_addr,
+                                     id=self.pull_info.ip_addr, msg='Get Publish TX, %s' % item)
+                        if item is not None and item['data'] == self.token:
+                            Logger.info(action=Action.resend, type=IDType.ip_addr,
+                                        id=self.pull_info.ip_addr, msg='Get Publish TX, %s' % item)
+                            self.ps.unsubscribe()
+                            self.ps.close()
+                            return
+                self.server.sendto(self.packet, self.pull_info.ip_addr)
+                Logger.error(action=Action.resend, type=IDType.ip_addr,
+                             id=self.pull_info.ip_addr, msg='Resend data %s : %s' % (i, self.packet))
+            Logger.error(action=Action.resend, type=IDType.gateway, id=self.pull_info.ip_addr,
+                         msg='No TX_ACK got, PULL_RESP may not received by gateway')
+        except Exception as error:
+            logger.error(str(error))
+        finally:
+            try:
+                self.ps.unsubscribe()
+                self.ps.close()
+            except Exception as error:
+                logger.error(str(error))
 
 
 class Sender(Greenlet):
@@ -168,7 +177,7 @@ class Sender(Greenlet):
                     device, rx_window=self.rx_window)
                 if send_data is not None:
                     self.server.socket.sendto(send_data, pull_info.ip_addr)
-                    Logger.info(msg='CLASS_B Sender %s' % send_data, action=Action.pull_resp,
+                    Logger.info(msg='CLASS_B or class_c rx2 Sender %s' % send_data, action=Action.pull_resp,
                                 type=IDType.ip_addr, id='%s:%d' % pull_info.ip_addr)
                     if pull_info.prot_ver == 2:
                         resend = ReSender(pull_info, send_data, self.server)
