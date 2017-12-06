@@ -6,11 +6,10 @@ const WebSocket = require('ws');
 const io = require('socket.io-client');
 var devDataCache = {};
 
-var socket = io('http://123.207.44.110:8300?app_eui=0000000000000001&token=tSaGGx9KKShoBDVC7ZfmIA', {
+var socket = io('http://localhost:8300?app_eui=0000000000000001&token=fK4cRvJni0z1Gvgx3XyE0w', {
 	reconnection: true
 });
 socket.on('post_rx', function(data) {
-	logger.debug(data);
 	if (data.eui in devDataCache) {
 		devDataCache[data.eui]['lastData'] = hexToAscii(data.data)
 		if ("webSocket" in devDataCache[data.eui]) {
@@ -86,6 +85,15 @@ function hexToAscii(e) {
 }
 
 wss.on('connection', function connection(ws) {
+	ws.on('close', function cleanConnection() {
+		logger.debug('try clean ws close cleanConnection');
+		for (key in devDataCache) {
+			if ('webSocket' in devDataCache[key] && devDataCache[key]['webSocket'] == ws) {
+				delete devDataCache[key].webSocket
+				logger.debug('cleaned ws close cleanConnection');
+			}
+		}
+	})
 	ws.on('message', function incoming(message) {
 		logger.debug('received: %s', message);
 		var rev = JSON.parse(message)
@@ -115,6 +123,16 @@ wss.on('connection', function connection(ws) {
 			}
 		}
 
+		function procSocketIoError() {
+			ws.send(JSON.stringify({
+				dev: rev.dev,
+				timestamp: parseInt(new Date().getTime() / 1000),
+				dataFrame: "operate server offline,try later",
+				status: 'error'
+			}))
+			socket.connect()
+		}
+
 		function closeDev() {
 			if ('id' in socket) {
 				socket.emit('tx', {
@@ -136,12 +154,7 @@ wss.on('connection', function connection(ws) {
 					}
 				}
 			} else {
-				ws.send(JSON.stringify({
-					dev: rev.dev,
-					timestamp: parseInt(new Date().getTime() / 1000),
-					dataFrame: "operate server online,try later",
-					status: 'error'
-				}))
+				procSocketIoError()
 			}
 		}
 
@@ -166,12 +179,7 @@ wss.on('connection', function connection(ws) {
 					}
 				}
 			} else {
-				ws.send(JSON.stringify({
-					dev: rev.dev,
-					timestamp: parseInt(new Date().getTime() / 1000),
-					dataFrame: "operate server online,try later",
-					status: 'error'
-				}))
+				procSocketIoError()
 			}
 		}
 	});
