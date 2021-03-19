@@ -15,7 +15,7 @@ gevent==1.1.0
 greenlet==0.4.12
 idna==2.5
 itsdangerous==0.24
-Jinja2==2.9.6
+Jinja2==2.11.3
 jsmin==2.2.2
 MarkupSafe==1.0
 Naked==0.1.31
