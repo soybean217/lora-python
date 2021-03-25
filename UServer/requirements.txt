@@ -26,7 +26,7 @@ pycrypto==2.6.1
 pyDes==2.0.1
 PyMySQL==0.7.11
 pytz==2017.2
-PyYAML==3.12
+PyYAML==5.4
 redis==2.10.5
 requests==2.18.1
 requests-oauthlib==0.8.0
